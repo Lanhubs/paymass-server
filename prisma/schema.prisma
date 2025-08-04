@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+// PostgreSQL Enums
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  SEND
+  RECEIVE
+  SWAP
+  ON_RAMP
+  OFF_RAMP
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum VerificationType {
+  NIN
+  BVN
+  PHONE
+  EMAIL
+  IDENTITY_DOCUMENT
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+model User {
+  id             String  @id @default(uuid())
+  email          String  @unique
+  googleId       String? @unique
+  password       String? // Hashed password for email signup
+  firstName      String
+  lastName       String
+  phoneNumber    String?
+  profilePicture String?
+  isVerified     Boolean @default(false)
+  isActive       Boolean @default(true)
+  ninVerified    Boolean @default(false)
+  ninNumber      String? @unique
+  accountNumber  String? @unique
+
+  // Encrypted sensitive data
+  encryptedData String? // Will store encrypted NIN and other sensitive info
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  lastLogin DateTime?
+
+  // Relations
+  wallets       Wallet[]
+  transactions  Transaction[]
+  verifications Verification[]
+  sessions      UserSession[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id         String  @id @default(uuid())
+  userId     String
+  currency   String // USDT, USDC
+  address    String
+  privateKey String // Encrypted
+  publicKey  String
+  assetId    String
+  balance    Float   @default(0)
+  isActive   Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentTransactions     Transaction[] @relation("SenderWallet")
+  receivedTransactions Transaction[] @relation("ReceiverWallet")
+
+  @@unique([userId, currency])
+  @@map("wallets")
+}
+
+model Transaction {
+  id               String  @id @default(uuid())
+  userId           String
+  senderWalletId   String?
+  receiverWalletId String?
+
+  type     TransactionType
+  status   TransactionStatus @default(PENDING)
+  currency String
+  amount   Float
+  fee      Float  @default(0)
+
+  // External transaction details
+  externalTxHash  String?
+  externalAddress String?
+  externalRef     String? // External service reference (e.g., Yellow Card transaction ID)
+
+  // Fiat conversion details
+  fiatAmount   Float?
+  fiatCurrency String? // NGN, USD, etc.
+  exchangeRate Float?
+
+  // Bank details for off-ramp
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+
+  description String?
+  metadata    Json? // JSON object for PostgreSQL
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  // Relations
+  user           User    @relation(fields: [userId], references: [id])
+  senderWallet   Wallet? @relation("SenderWallet", fields: [senderWalletId], references: [id])
+  receiverWallet Wallet? @relation("ReceiverWallet", fields: [receiverWalletId], references: [id])
+
+  @@map("transactions")
+}
+
+model Verification {
+  id     String           @id @default(uuid())
+  userId String
+  type   VerificationType
+  status VerificationStatus @default(PENDING)
+
+  // Verification data (encrypted)
+  verificationData String?
+  documentUrl      String?
+
+  // External verification reference
+  externalRef String?
+
+  submittedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+  expiresAt   DateTime?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verifications")
+}
+
+model UserSession {
+  id           String  @id @default(uuid())
+  userId       String
+  token        String  @unique
+  refreshToken String? @unique
+  deviceInfo   String?
+  ipAddress    String?
+  userAgent    String?
+  isActive     Boolean @default(true)
+
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String
+  keyHash     String    @unique
+  permissions String
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  @@map("api_keys")
+}
