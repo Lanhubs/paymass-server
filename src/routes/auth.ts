@@ -72,7 +72,6 @@ const registerHandler = [
         success: true,
         message: 'User registered successfully. Wallets created automatically.',
         data: {
-          wallets: result.wallets,
           accessToken: result.accessToken,
           refreshToken: result.refreshToken
         }
@@ -96,7 +95,6 @@ const registerHandler = [
 
 // Both /register and /signup point to the same handler
 router.post('/register', ...registerHandler);
-router.post('/signup', ...registerHandler);
 
 router.post('/login',
   generalRateLimit,
@@ -131,13 +129,13 @@ router.post('/login',
       });
 
       logger.info('User login successful', {
-        userId: result.user.id,
-        email: result.user.email,
+        // userId: result.user.id,
+        // email: result.user.email,
         clientIP,
         userAgent: userAgent.substring(0, 100)
       });
 
-      res.json({
+      res.status(201).json({
         success: true,
         message: 'Login successful',
         data: result

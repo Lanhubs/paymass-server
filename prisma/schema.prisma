@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 // PostgreSQL Enums
@@ -70,22 +70,24 @@ model User {
   transactions  Transaction[]
   verifications Verification[]
   sessions      UserSession[]
+  swaps         Swap[]
 
   @@map("users")
 }
 
 model Wallet {
-  id         String  @id @default(uuid())
+  id         String   @id @default(uuid())
   userId     String
   currency   String // USDT, USDC
   address    String
   privateKey String // Encrypted
   publicKey  String
   assetId    String
-  balance    Float   @default(0)
-  isActive   Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  balance    Float    @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  // currencyImage String
 
   // Relations
   user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -106,7 +108,7 @@ model Transaction {
   status   TransactionStatus @default(PENDING)
   currency String
   amount   Float
-  fee      Float  @default(0)
+  fee      Float             @default(0)
 
   // External transaction details
   externalTxHash  String?
@@ -138,8 +140,24 @@ model Transaction {
   @@map("transactions")
 }
 
+model Swap {
+  id        String   @id @default(uuid())
+  userId    String
+  fromAsset String
+  toAsset   String
+  amount    Float
+  status    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("swaps")
+}
+
 model Verification {
-  id     String           @id @default(uuid())
+  id     String             @id @default(uuid())
   userId String
   type   VerificationType
   status VerificationStatus @default(PENDING)

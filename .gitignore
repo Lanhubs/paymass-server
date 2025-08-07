@@ -1,2 +1,6 @@
 node_modules
 .env
+./prisma/ssl.pem
+prisma/ssl.pem
+prisma/ssl.pem
+ssl.pem

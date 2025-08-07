@@ -81,7 +81,8 @@ export class AuthService {
       // Generate wallets for the new user
       try {
         logger.info('User wallets created successfully', { userId: user.id });
-        
+        await WalletService.createUserWalletsWithBlockRadar(user.id);
+
       } catch (walletError) {
         logger.error('Failed to create user wallets during registration', {
           userId: user.id,
@@ -89,9 +90,8 @@ export class AuthService {
         });
         // Don't fail registration if wallet creation fails, but log it
       }
-      
+
       const { accessToken, refreshToken } = this.generateTokens(user.id, user.email);
-      const wallets = await WalletService.createUserWalletsWithBlockRadar(user.id);
 
       // Store refresh token in database
       await prisma.userSession.create({
@@ -111,7 +111,6 @@ export class AuthService {
 
       return {
         user,
-        wallets,
         accessToken,
         refreshToken
       };
@@ -165,15 +164,15 @@ export class AuthService {
       logger.info('User logged in successfully', { userId: user.id, email: user.email });
 
       return {
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phoneNumber: user.phoneNumber,
-          isVerified: user.isVerified,
-          createdAt: user.createdAt
-        },
+        // user: {
+        //   id: user.id,
+        //   email: user.email,
+        //   firstName: user.firstName,
+        //   lastName: user.lastName,
+        //   phoneNumber: user.phoneNumber,
+        //   isVerified: user.isVerified,
+        //   createdAt: user.createdAt
+        // },
         accessToken,
         refreshToken
       };

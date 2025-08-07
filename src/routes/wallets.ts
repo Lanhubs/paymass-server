@@ -17,7 +17,7 @@ router.get('/',
   authenticateToken,
   (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      
+
       const wallets = await WalletService.getUserWallets(req.user!.userId);
 
       res.json({
@@ -209,12 +209,11 @@ router.get('/balance',
 
       const wallet = await prisma.wallet.findFirst({
         where: {
-          id: assetId,
+          assetId,
           userId: req.user!.userId,
           isActive: true
         }
       });
-      console.log(assetId, wallet)
 
       if (!wallet) {
         return res.status(404).json({
@@ -284,7 +283,7 @@ router.post('/balances',
 
       const wallet = await prisma.wallet.findFirst({
         where: {
-          userId: req.user!.userId,
+          userId: req.user!.userId as UUID,
           isActive: true
         }
       });
@@ -360,4 +359,151 @@ router.post('/balances',
   }) as RequestHandler
 );
 
+// Swap Routes - Based on BlockRadar API Documentation
+router.post('/swap',
+  generalRateLimit,
+  authenticateToken,
+  sanitizeInput,
+  [
+    body('addressId')
+      .notEmpty()
+      .withMessage('Address ID is required'),
+    body('inputAssetId')
+      .isUUID()
+      .withMessage('Input asset ID must be a valid UUID'),
+    body('outputAssetId')
+      .isUUID()
+      .withMessage('Output asset ID must be a valid UUID'),
+    body('inputAmount')
+      .isFloat({ min: 0.000001 })
+      .withMessage('Input amount must be a positive number'),
+    body('slippage')
+      .optional()
+      .isFloat({ min: 0.1, max: 50 })
+      .withMessage('Slippage must be between 0.1 and 50 percent')
+  ],
+  handleValidationErrors,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { addressId, inputAssetId, outputAssetId, inputAmount, slippage, recipientAddress } = req.body;
+
+      // Verify wallet ownership by checking if user owns a wallet with this address
+      const wallet = await prisma.wallet.findFirst({
+        where: {
+          address: addressId,
+          userId: req.user!.userId,
+          isActive: true
+        }
+      });
+
+      if (!wallet) {
+        return res.status(404).json({
+          success: false,
+          message: 'Wallet address not found or unauthorized'
+        });
+      }
+
+      const swapResult = await WalletService.executeSwap({
+        addressId,
+        inputAssetId,
+        outputAssetId,
+        recipientAddress: recipientAddress as string,
+        inputAmount: parseFloat(inputAmount as string),
+        slippage: slippage ? parseFloat(slippage as string) : 1.0
+      });
+
+      // Create transaction record
+      await prisma.transaction.create({
+        data: {
+          userId: req.user!.userId,
+          senderWalletId: wallet.id,
+          type: 'SWAP',
+          status: 'PROCESSING',
+          currency: 'SWAP',
+          amount: parseFloat(inputAmount as string),
+          fee: swapResult.fee || 0,
+          externalTxHash: swapResult.txHash || swapResult.transactionHash,
+          description: `Swap ${inputAmount} tokens from ${inputAssetId} to ${outputAssetId}`,
+          metadata: {
+            addressId,
+            inputAssetId,
+            outputAssetId,
+            inputAmount,
+            slippage: slippage || 1.0,
+            swapResult
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Swap executed successfully',
+        data: swapResult
+      });
+    } catch (error: any) {
+      logger.error('Execute swap error', {
+        userId: req.user?.userId,
+        addressId: req.body.addressId,
+        inputAssetId: req.body.inputAssetId,
+        outputAssetId: req.body.outputAssetId,
+        inputAmount: req.body.inputAmount,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Swap execution failed'
+      });
+    }
+  }) as RequestHandler
+);
+
+
+router.post("/get-swap-details", generalRateLimit,
+  authenticateToken,
+  sanitizeInput,
+  [
+    body("fromAssetId").notEmpty().withMessage("From asset ID is required"),
+    body("toAssetId").notEmpty().withMessage("To asset ID is required"),
+    body("amount").notEmpty().withMessage("Amount is required"),
+    body("recipientAddress").optional().isFloat({ min: 0.1, max: 50 }).withMessage("receipient address is missing"),
+
+  ],
+  handleValidationErrors,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { fromAssetId, toAssetId, amount, recipientAddress } = req.body;
+
+      const swapDetails = await WalletService.getSwapDetails({
+
+        fromAssetId,
+        recipientAddress,
+        toAssetId,
+        userId: req.user!.userId as UUID,
+        amount: parseFloat(amount as string)
+      });
+
+      res.json({
+        success: true,
+        message: "Swap details retrieved successfully",
+        data: swapDetails
+      });
+    } catch (error: any) {
+      logger.error('Get swap details error', {
+        userId: req.user?.userId,
+        fromAssetId: req.body.fromAssetId,
+        toAssetId: req.body.toAssetId,
+        amount: req.body.amount,
+        recipientAddress: req.body.recipientAddress,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to retrieve swap details'
+      });
+    }
+  }) as RequestHandler
+
+)
 export default router;
