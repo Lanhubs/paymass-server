@@ -4,3 +4,4 @@ node_modules
 prisma/ssl.pem
 prisma/ssl.pem
 ssl.pem
+logs
