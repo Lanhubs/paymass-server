@@ -5,3 +5,4 @@ prisma/ssl.pem
 prisma/ssl.pem
 ssl.pem
 logs
+dist
