@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { EncryptionService } from '../utils/encryption.js';
-import { logger } from '../utils/logger.js';
+import { EncryptionService } from '../utils/encryption';
+import { logger } from '../utils/logger';
 import { PublicKey } from '@solana/web3.js';
-import blockradar from '../utils/apis.js';
+import {blockradar} from '../utils/apis';
 import { randomBytes, randomUUID, type UUID } from 'crypto';
 
 const prisma = new PrismaClient();

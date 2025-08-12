@@ -2,11 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { generalRateLimit } from './src/middleware/security.js';
-import { logger } from './src/utils/logger.js';
-import walletRoutes from './src/routes/wallets.js';
-import transactionRoutes from './src/routes/transactions.js';
-import authRoutes from './src/routes/auth.js';
+import { generalRateLimit } from './src/middleware/security';
+import { logger } from './src/utils/logger';
+import walletRoutes from './src/routes/wallets';
+import transactionRoutes from './src/routes/transactions';
+import authRoutes from './src/routes/auth';
+import rampsRoutes from './src/routes/ramps';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use(generalRateLimit);
 app.use('/api/auth', authRoutes);
 app.use('/api/wallets', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use("/api/ramps", rampsRoutes)
 
 // Health check
 app.get('/health', (req, res) => {

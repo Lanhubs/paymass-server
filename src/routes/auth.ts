@@ -323,4 +323,148 @@ router.get('/me',
   }) as RequestHandler
 );
 
+// Transaction PIN endpoints
+router.post('/setup-transaction-pin',
+  generalRateLimit,
+  authenticateToken,
+  sanitizeInput,
+  [
+    body('pin')
+      .matches(/^\d{4,6}$/)
+      .withMessage('PIN must be 4-6 digits')
+  ],
+  handleValidationErrors,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { pin } = req.body;
+      const userId = req.user!.userId;
+
+      logger.info('Transaction PIN setup attempt', { userId });
+
+      const result = await AuthService.setupTransactionPin(userId, { pin });
+
+      res.json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error: any) {
+      logger.error('Transaction PIN setup error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to setup transaction PIN'
+      });
+    }
+  }) as RequestHandler
+);
+
+router.post('/verify-transaction-pin',
+  generalRateLimit,
+  authenticateToken,
+  sanitizeInput,
+  [
+    body('pin')
+      .matches(/^\d{4,6}$/)
+      .withMessage('PIN must be 4-6 digits')
+  ],
+  handleValidationErrors,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { pin } = req.body;
+      const userId = req.user!.userId;
+
+      const result = await AuthService.verifyTransactionPin(userId, { pin });
+
+      res.json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error: any) {
+      logger.error('Transaction PIN verification error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(400).json({
+        success: false,
+        message: error.message || 'PIN verification failed'
+      });
+    }
+  }) as RequestHandler
+);
+
+router.put('/update-transaction-pin',
+  generalRateLimit,
+  authenticateToken,
+  sanitizeInput,
+  [
+    body('currentPin')
+      .matches(/^\d{4,6}$/)
+      .withMessage('Current PIN must be 4-6 digits'),
+    body('newPin')
+      .matches(/^\d{4,6}$/)
+      .withMessage('New PIN must be 4-6 digits')
+  ],
+  handleValidationErrors,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { currentPin, newPin } = req.body;
+      const userId = req.user!.userId;
+
+      logger.info('Transaction PIN update attempt', { userId });
+
+      const result = await AuthService.updateTransactionPin(userId, { currentPin, newPin });
+
+      res.json({
+        success: true,
+        message: result.message,
+        data: result
+      });
+    } catch (error: any) {
+      logger.error('Transaction PIN update error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to update transaction PIN'
+      });
+    }
+  }) as RequestHandler
+);
+
+router.get('/pin-status',
+  generalRateLimit,
+  authenticateToken,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user!.userId;
+
+      const result = await AuthService.checkPinStatus(userId);
+
+      res.json({
+        success: true,
+        message: 'PIN status retrieved successfully',
+        data: result
+      });
+    } catch (error: any) {
+      logger.error('PIN status check error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check PIN status'
+      });
+    }
+  }) as RequestHandler
+);
+
 export default router;

@@ -1,8 +1,8 @@
 import { PrismaClient, TransactionStatus, TransactionType } from '@prisma/client';
-import { EncryptionService } from '../utils/encryption.js';
-import { WalletService } from './walletService.js';
-import { logger } from '../utils/logger.js';
-import blockradar from '../utils/apis.js';
+import { EncryptionService } from '../utils/encryption';
+import { WalletService } from './walletService';
+import { logger } from '../utils/logger';
+import {blockradar} from '../utils/apis';
 
 const prisma = new PrismaClient();
 
