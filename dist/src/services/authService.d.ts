@@ -15,6 +15,16 @@ export interface RefreshTokenRequest {
 export interface GoogleAuthRequest {
     code: string;
 }
+export interface TransactionPinRequest {
+    pin: string;
+}
+export interface VerifyTransactionPinRequest {
+    pin: string;
+}
+export interface UpdateTransactionPinRequest {
+    currentPin: string;
+    newPin: string;
+}
 export declare class AuthService {
     private static generateTokens;
     static register(userData: RegisterRequest, deviceInfo?: {
@@ -87,6 +97,23 @@ export declare class AuthService {
         profilePicture: string | null;
         isVerified: boolean;
         ninVerified: boolean;
+    }>;
+    static setupTransactionPin(userId: string, pinRequest: TransactionPinRequest): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    static verifyTransactionPin(userId: string, pinRequest: VerifyTransactionPinRequest): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    static updateTransactionPin(userId: string, pinRequest: UpdateTransactionPinRequest): Promise<{
+        success: boolean;
+        message: string;
+    }>;
+    static checkPinStatus(userId: string): Promise<{
+        hasPinSetup: boolean;
+        pinSetupAt: any;
+        pinUpdatedAt: any;
     }>;
 }
 //# sourceMappingURL=authService.d.ts.map

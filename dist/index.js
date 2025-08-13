@@ -7,6 +7,7 @@ import { logger } from './src/utils/logger.js';
 import walletRoutes from './src/routes/wallets.js';
 import transactionRoutes from './src/routes/transactions.js';
 import authRoutes from './src/routes/auth.js';
+import rampsRoutes from './src/routes/ramps.js';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,7 @@ app.use(generalRateLimit);
 app.use('/api/auth', authRoutes);
 app.use('/api/wallets', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use("/api/ramps", rampsRoutes);
 // Health check
 app.get('/health', (req, res) => {
     res.json({

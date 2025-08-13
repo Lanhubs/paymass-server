@@ -57,6 +57,11 @@ model User {
   ninNumber      String? @unique
   accountNumber  String? @unique
 
+  // Transaction PIN
+  transactionPin String?   // Hashed transaction PIN
+  pinSetupAt     DateTime? // When PIN was first setup
+  pinUpdatedAt   DateTime? // When PIN was last updated
+
   // Encrypted sensitive data
   encryptedData String? // Will store encrypted NIN and other sensitive info
 

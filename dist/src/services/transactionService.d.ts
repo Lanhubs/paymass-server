@@ -44,7 +44,7 @@ export declare class TransactionService {
             currency: string;
             address: string;
         } | null;
-        metadata: import("@prisma/client/runtime/library.js").JsonValue;
+        metadata: import("@prisma/client/runtime/library").JsonValue;
         createdAt: Date;
         completedAt: Date | null;
     }>;

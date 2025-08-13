@@ -343,5 +343,142 @@ export class AuthService {
             throw error;
         }
     }
+    // Transaction PIN Methods
+    static async setupTransactionPin(userId, pinRequest) {
+        try {
+            const { pin } = pinRequest;
+            // Validate PIN format (4-6 digits)
+            if (!/^\d{4,6}$/.test(pin)) {
+                throw new Error('PIN must be 4-6 digits');
+            }
+            // Check if user already has a PIN
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { transactionPin: true }
+            });
+            if (!user) {
+                throw new Error('User not found');
+            }
+            if (user.transactionPin) {
+                throw new Error('Transaction PIN already exists. Use update PIN instead.');
+            }
+            // Hash the PIN
+            const hashedPin = EncryptionService.hashPassword(pin);
+            // Update user with transaction PIN
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    transactionPin: hashedPin,
+                    pinSetupAt: new Date()
+                }
+            });
+            logger.info('Transaction PIN setup successfully', { userId });
+            return {
+                success: true,
+                message: 'Transaction PIN setup successfully'
+            };
+        }
+        catch (error) {
+            logger.error('Transaction PIN setup failed', { userId, error });
+            throw error;
+        }
+    }
+    static async verifyTransactionPin(userId, pinRequest) {
+        try {
+            const { pin } = pinRequest;
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { transactionPin: true }
+            });
+            if (!user) {
+                throw new Error('User not found');
+            }
+            if (!user.transactionPin) {
+                throw new Error('Transaction PIN not set. Please setup your PIN first.');
+            }
+            const isValidPin = EncryptionService.verifyPassword(pin, user.transactionPin);
+            if (!isValidPin) {
+                // Log failed attempt
+                logger.warn('Invalid transaction PIN attempt', { userId });
+                throw new Error('Invalid transaction PIN');
+            }
+            logger.info('Transaction PIN verified successfully', { userId });
+            return {
+                success: true,
+                message: 'Transaction PIN verified successfully'
+            };
+        }
+        catch (error) {
+            logger.error('Transaction PIN verification failed', { userId, error });
+            throw error;
+        }
+    }
+    static async updateTransactionPin(userId, pinRequest) {
+        try {
+            const { currentPin, newPin } = pinRequest;
+            // Validate new PIN format
+            if (!/^\d{4,6}$/.test(newPin)) {
+                throw new Error('New PIN must be 4-6 digits');
+            }
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { transactionPin: true }
+            });
+            if (!user) {
+                throw new Error('User not found');
+            }
+            if (!user.transactionPin) {
+                throw new Error('Transaction PIN not set. Please setup your PIN first.');
+            }
+            // Verify current PIN
+            const isValidCurrentPin = EncryptionService.verifyPassword(currentPin, user.transactionPin);
+            if (!isValidCurrentPin) {
+                throw new Error('Current PIN is incorrect');
+            }
+            // Hash new PIN
+            const hashedNewPin = EncryptionService.hashPassword(newPin);
+            // Update user with new PIN
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    transactionPin: hashedNewPin,
+                    pinUpdatedAt: new Date()
+                }
+            });
+            logger.info('Transaction PIN updated successfully', { userId });
+            return {
+                success: true,
+                message: 'Transaction PIN updated successfully'
+            };
+        }
+        catch (error) {
+            logger.error('Transaction PIN update failed', { userId, error });
+            throw error;
+        }
+    }
+    static async checkPinStatus(userId) {
+        try {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    transactionPin: true,
+                    pinSetupAt: true,
+                    pinUpdatedAt: true
+                }
+            });
+            if (!user) {
+                throw new Error('User not found');
+            }
+            return {
+                hasPinSetup: !!user.transactionPin,
+                pinSetupAt: user.pinSetupAt,
+                pinUpdatedAt: user.pinUpdatedAt
+            };
+        }
+        catch (error) {
+            logger.error('Failed to check PIN status', { userId, error });
+            throw error;
+        }
+    }
 }
 //# sourceMappingURL=authService.js.map
