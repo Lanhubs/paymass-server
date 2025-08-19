@@ -51,9 +51,9 @@ router.get('/withdraw/network-fee',
       .withMessage('Amount must be a positive number'),
     query('address')
       .isLength({ min: 32, max: 44 })
-      .withMessage('Invalid Solana address length')
+      .withMessage('Invalid Base address length')
       .matches(/^[1-9A-HJ-NP-Za-km-z]+$/)
-      .withMessage('Invalid Solana address format (must be base58)')
+      .withMessage('Invalid Base address format (must be base58)')
   ],
   handleValidationErrors,
   (async (req: AuthenticatedRequest, res: Response) => {
@@ -93,25 +93,24 @@ router.post('/withdraw',
   authenticateToken,
   sanitizeInput,
   [
-    body('walletId')
-      .isUUID()
-      .withMessage('Wallet ID must be a valid UUID'),
+    
     body('toAddress')
-      .isLength({ min: 32, max: 44 })
-      .withMessage('Invalid Solana address length')
-      .matches(/^[1-9A-HJ-NP-Za-km-z]+$/)
-      .withMessage('Invalid Solana address format (must be base58)'),
+      .isLength({ min: 32, max: 42 })
+      .withMessage('Invalid Base address length')
+      .matches(/^0x[0-9a-fA-F]{40}$/)
+      .withMessage('Invalid Base address format (must be base58)'),
     body('amount')
       .isFloat({ min: 0.000001 })
       .withMessage('Amount must be a positive number'),
     body('currency')
-      .isIn(['SOL', 'USDT', 'USDC'])
-      .withMessage('Currency must be SOL, USDT, or USDC')
+      .isIn(['Base', 'USDT', 'USDC'])
+      .withMessage('Currency must be Base, USDT, or USDC')
   ],
   handleValidationErrors,
   (async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { walletId, toAddress, amount, currency } = req.body;
+      
 
       const wallet = await prisma.wallet.findFirst({
         where: {
@@ -162,8 +161,8 @@ router.get('/summary',
   [
     query('currency')
       .optional()
-      .isIn(['SOL', 'USDT', 'USDC'])
-      .withMessage('Currency must be SOL, USDT, or USDC')
+      .isIn(['Base', 'USDT', 'USDC'])
+      .withMessage('Currency must be Base, USDT, or USDC')
   ],
   handleValidationErrors,
   (async (req: AuthenticatedRequest, res: Response) => {

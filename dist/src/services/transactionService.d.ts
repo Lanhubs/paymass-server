@@ -3,7 +3,7 @@ export interface SendTransactionRequest {
     fromWalletId: string;
     toAddress: string;
     amount: number;
-    currency: 'SOL' | 'USDT' | 'USDC';
+    currency: 'Base' | 'USDT' | 'USDC';
     description?: string;
 }
 export interface TransactionResponse {

@@ -4,7 +4,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  //  url      = env("DATABASE_URL")
+  url      = "postgresql://paymass_0qd5_user:PxaH4l2GJPGkbnUem0SKjE0uoIUV94Zf@dpg-d2hjtqadbo4c73bugtng-a.oregon-postgres.render.com/paymass_0qd5"
 }
 
 // PostgreSQL Enums
@@ -43,22 +44,22 @@ enum VerificationStatus {
 }
 
 model User {
-  id             String  @id @default(uuid())
-  email          String  @unique
-  googleId       String? @unique
+  id             String    @id @default(uuid())
+  email          String    @unique
+  googleId       String?   @unique
   password       String? // Hashed password for email signup
   firstName      String
   lastName       String
   phoneNumber    String?
   profilePicture String?
-  isVerified     Boolean @default(false)
-  isActive       Boolean @default(true)
-  ninVerified    Boolean @default(false)
-  ninNumber      String? @unique
-  accountNumber  String? @unique
-
+  isVerified     Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  ninVerified    Boolean   @default(false)
+  ninNumber      String?   @unique
+  accountNumber  String?   @unique
+  firebaseToken  String? // For push notifications
   // Transaction PIN
-  transactionPin String?   // Hashed transaction PIN
+  transactionPin String? // Hashed transaction PIN
   pinSetupAt     DateTime? // When PIN was first setup
   pinUpdatedAt   DateTime? // When PIN was last updated
 
@@ -92,7 +93,6 @@ model Wallet {
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  // currencyImage String
 
   // Relations
   user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -129,6 +129,7 @@ model Transaction {
   bankName      String?
   accountNumber String?
   accountName   String?
+  transactionId String?
 
   description String?
   metadata    Json? // JSON object for PostgreSQL

@@ -2,17 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { generalRateLimit } from './src/middleware/security.js';
-import { logger } from './src/utils/logger.js';
-import walletRoutes from './src/routes/wallets.js';
-import transactionRoutes from './src/routes/transactions.js';
-import authRoutes from './src/routes/auth.js';
-import rampsRoutes from './src/routes/ramps.js';
+import { generalRateLimit } from './src/middleware/security';
+import { logger } from './src/utils/logger';
+import walletRoutes from './src/routes/wallets';
+import transactionRoutes from './src/routes/transactions';
+import authRoutes from './src/routes/auth';
+import rampsRoutes from './src/routes/ramps';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4400;
 
 // Security middleware
 app.use(helmet());

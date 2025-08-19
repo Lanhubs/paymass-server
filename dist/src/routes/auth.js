@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { AuthService } from '../services/authService.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { generalRateLimit } from '../middleware/security.js';
-import { handleValidationErrors, sanitizeInput } from '../middleware/validation.js';
+import { AuthService } from '../services/authService';
+import { authenticateToken } from '../middleware/auth';
+import { generalRateLimit } from '../middleware/security';
+import { handleValidationErrors, sanitizeInput } from '../middleware/validation';
 import { body } from 'express-validator';
 import { logger } from '../utils/logger.js';
-import { GoogleAuthService } from '../services/googleAuthService.js';
+import { GoogleAuthService } from '../services/googleAuthService';
 const router = Router();
 const registerHandler = [
     generalRateLimit,
@@ -38,6 +38,7 @@ const registerHandler = [
     handleValidationErrors,
     (async (req, res) => {
         try {
+            console.log(req.body);
             const { email, password, firstName, lastName, phoneNumber } = req.body;
             const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
             const userAgent = req.get('User-Agent') || 'unknown';

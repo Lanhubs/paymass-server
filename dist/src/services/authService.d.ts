@@ -112,8 +112,8 @@ export declare class AuthService {
     }>;
     static checkPinStatus(userId: string): Promise<{
         hasPinSetup: boolean;
-        pinSetupAt: any;
-        pinUpdatedAt: any;
+        pinSetupAt: Date | null;
+        pinUpdatedAt: Date | null;
     }>;
 }
 //# sourceMappingURL=authService.d.ts.map

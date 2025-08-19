@@ -38,9 +38,9 @@ router.get('/withdraw/network-fee', generalRateLimit, authenticateToken, [
         .withMessage('Amount must be a positive number'),
     query('address')
         .isLength({ min: 32, max: 44 })
-        .withMessage('Invalid Solana address length')
+        .withMessage('Invalid Base address length')
         .matches(/^[1-9A-HJ-NP-Za-km-z]+$/)
-        .withMessage('Invalid Solana address format (must be base58)')
+        .withMessage('Invalid Base address format (must be base58)')
 ], handleValidationErrors, (async (req, res) => {
     try {
         const { assetId, amount, address } = req.query;
@@ -70,20 +70,17 @@ router.get('/withdraw/network-fee', generalRateLimit, authenticateToken, [
     }
 }));
 router.post('/withdraw', generalRateLimit, authenticateToken, sanitizeInput, [
-    body('walletId')
-        .isUUID()
-        .withMessage('Wallet ID must be a valid UUID'),
     body('toAddress')
-        .isLength({ min: 32, max: 44 })
-        .withMessage('Invalid Solana address length')
-        .matches(/^[1-9A-HJ-NP-Za-km-z]+$/)
-        .withMessage('Invalid Solana address format (must be base58)'),
+        .isLength({ min: 32, max: 42 })
+        .withMessage('Invalid Base address length')
+        .matches(/^0x[0-9a-fA-F]{40}$/)
+        .withMessage('Invalid Base address format (must be base58)'),
     body('amount')
         .isFloat({ min: 0.000001 })
         .withMessage('Amount must be a positive number'),
     body('currency')
-        .isIn(['SOL', 'USDT', 'USDC'])
-        .withMessage('Currency must be SOL, USDT, or USDC')
+        .isIn(['Base', 'USDT', 'USDC'])
+        .withMessage('Currency must be Base, USDT, or USDC')
 ], handleValidationErrors, (async (req, res) => {
     try {
         const { walletId, toAddress, amount, currency } = req.body;
@@ -122,8 +119,8 @@ router.post('/withdraw', generalRateLimit, authenticateToken, sanitizeInput, [
 router.get('/summary', generalRateLimit, authenticateToken, [
     query('currency')
         .optional()
-        .isIn(['SOL', 'USDT', 'USDC'])
-        .withMessage('Currency must be SOL, USDT, or USDC')
+        .isIn(['Base', 'USDT', 'USDC'])
+        .withMessage('Currency must be Base, USDT, or USDC')
 ], handleValidationErrors, (async (req, res) => {
     try {
         const currency = req.query.currency;

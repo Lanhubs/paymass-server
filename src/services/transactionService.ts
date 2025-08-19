@@ -10,7 +10,7 @@ export interface SendTransactionRequest {
   fromWalletId: string;
   toAddress: string;
   amount: number;
-  currency: 'SOL' | 'USDT' | 'USDC';
+  currency: 'Base' | 'USDT' | 'USDC';
   description?: string;
 }
 
@@ -35,7 +35,7 @@ export interface TransactionHistory {
 export class TransactionService {
   private static calculateTransactionFee(currency: string, amount: number): number {
     const baseFees = {
-      SOL: 0.00025,
+      Base: 0.00025,
       USDT: 1.0,
       USDC: 1.0
     };
@@ -148,7 +148,7 @@ export class TransactionService {
         id: tx.id || tx.hash,
         type: tx.type || 'SEND',
         status: tx.status || 'COMPLETED',
-        currency: tx.asset?.symbol || 'SOL',
+        currency: tx.asset?.symbol || 'Base',
         amount: parseFloat(tx.amount || '0'),
         fee: parseFloat(tx.fee || '0'),
         externalAddress: tx.to || tx.from,
