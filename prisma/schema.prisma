@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   //  url      = env("DATABASE_URL")
-  url      = "postgresql://paymass_0qd5_user:PxaH4l2GJPGkbnUem0SKjE0uoIUV94Zf@dpg-d2hjtqadbo4c73bugtng-a.oregon-postgres.render.com/paymass_0qd5"
+  url      = "postgresql://paymass_tkat_user:iMc9qwRHVWsKyGiswfym4IQJRC3biPC3@dpg-d3mlfqpgv73c73fro49g-a.oregon-postgres.render.com/paymass_tkat"
 }
 
 // PostgreSQL Enums

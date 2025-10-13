@@ -73,4 +73,12 @@ const paystack = axios.create({
   },
   timeout: 30000
 })
+
+
+export const alchemyPayInstance =axios.create({
+  baseURL:process.env.ALCHEMYPAY_API_URL,
+  headers:{
+    "Authorization":`${process.env.ALCHEMYPAY_API_KEY}`
+  }
+})
 export { blockradar, paycrest, paystack};

@@ -8,6 +8,7 @@ import walletRoutes from './src/routes/wallets';
 import transactionRoutes from './src/routes/transactions';
 import authRoutes from './src/routes/auth';
 import rampsRoutes from './src/routes/ramps';
+import alchemyRampsRoutes from './src/routes/alchemy.ramps';
 
 dotenv.config();
 
@@ -17,7 +18,7 @@ const PORT = process.env.PORT || 4400;
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin:  'http://localhost:3000',
+  origin: 'http://localhost:3000',
   credentials: true
 }));
 
@@ -31,11 +32,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/wallets', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use("/api/ramps", rampsRoutes)
+app.use("/api/alchemy/ramps", alchemyRampsRoutes)
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
