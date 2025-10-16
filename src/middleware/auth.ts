@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger.js';
+import path from 'path';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -9,10 +10,9 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
   if (!token) {
     return res.status(401).json({
       success: false,
@@ -21,7 +21,11 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
+    const secretKey = process.env.APP_AUTH_KEY as string
+
+
+    const decoded = jwt.verify(token, secretKey) as any;
+    
     req.user = {
       userId: decoded.userId,
       email: decoded.email

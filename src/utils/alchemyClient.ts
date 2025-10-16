@@ -10,13 +10,16 @@ const alchemyClient = axios.create({
 });
 
 // Add interceptor to attach JWT
-alchemyClient.interceptors.request.use((config: any) => {
-    const token = generateJWT();
+alchemyClient.interceptors.request.use(async (config: any) => {
+    const token = await generateJWT();
 
-    return {
+    config.headers = {
         ...config.headers,
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        'access-token':token
     };
+
+    return config;
 });
 export default alchemyClient

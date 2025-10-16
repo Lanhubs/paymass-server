@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.js';
 import { EncryptionService } from '../utils/encryption.js';
 import { WalletService } from './walletService.js';
 import { GoogleAuthService, type GoogleUserInfo } from './googleAuthService.js';
-
+import path from 'path';
 const prisma = new PrismaClient();
 
 export interface LoginRequest {
@@ -40,19 +40,30 @@ export interface UpdateTransactionPinRequest {
   currentPin: string;
   newPin: string;
 }
+const pvKey = path.join(process.cwd(), "private_key.pem")
+var private_key = Bun.file(pvKey)
+
 
 export class AuthService {
-  private static generateTokens(userId: string, email: string) {
+  private static async generateTokens(userId: string, email: string) {
+    const secretKey = process.env.APP_AUTH_KEY as string
     const accessToken = jwt.sign(
       { userId, email },
-      process.env.JWT_SECRET || 'default-secret',
-      { expiresIn: '15m' } // Short-lived access token
+      secretKey,
+      {
+        expiresIn: '15m',
+        // algorithm: "RS256"
+      
+      } // Short-lived access token
     );
 
     const refreshToken = jwt.sign(
       { userId, email, type: 'refresh' },
-      process.env.JWT_REFRESH_SECRET || 'default-refresh-secret',
-      { expiresIn: '7d' } // Long-lived refresh token
+      secretKey,
+      {
+        expiresIn: '7d',
+        
+      } // Long-lived refresh token
     );
 
     return { accessToken, refreshToken };
@@ -104,7 +115,7 @@ export class AuthService {
         // Don't fail registration if wallet creation fails, but log it
       }
 
-      const { accessToken, refreshToken } = this.generateTokens(user.id, user.email);
+      const { accessToken, refreshToken } = await this.generateTokens(user.id, user.email);
 
       // Store refresh token in database
       await prisma.userSession.create({
@@ -152,13 +163,13 @@ export class AuthService {
       if (!user.isActive) {
         throw new Error('Account is deactivated');
       }
-
       await prisma.user.update({
         where: { id: user.id },
         data: { lastLogin: new Date() }
       });
-
-      const { accessToken, refreshToken } = this.generateTokens(user.id, user.email);
+      const tokens = await this.generateTokens(user.id, user.email);
+      console.log(tokens)
+      const { accessToken, refreshToken } = tokens
 
       // Store refresh token in database
       await prisma.userSession.create({
@@ -199,10 +210,16 @@ export class AuthService {
     try {
       const { refreshToken } = refreshTokenRequest;
 
+      // Get public key for verification
+      const pubKey = path.join(process.cwd(), "public_key.pem")
+      const public_key = Bun.file(pubKey)
+      const publicKey = await public_key.text() as string
+
       // Verify refresh token
       const decoded = jwt.verify(
         refreshToken,
-        process.env.JWT_REFRESH_SECRET || 'default-refresh-secret'
+        publicKey,
+        { algorithms: ["RS256"] }
       ) as any;
 
       if (decoded.type !== 'refresh') {
@@ -232,7 +249,7 @@ export class AuthService {
       }
 
       // Generate new tokens
-      const { accessToken, refreshToken: newRefreshToken } = this.generateTokens(
+      const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(
         session.user.id,
         session.user.email
       );
@@ -358,7 +375,7 @@ export class AuthService {
         throw new Error('Account is deactivated');
       }
 
-      const { accessToken, refreshToken } = this.generateTokens(user.id, user.email);
+      const { accessToken, refreshToken } = await this.generateTokens(user.id, user.email);
 
       // Store refresh token in database
       await prisma.userSession.create({

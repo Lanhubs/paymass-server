@@ -75,7 +75,7 @@ class offrampServices {
         `/rates/${token}/${amount}/${currency}`,
         {
           headers: {
-            disableAuth: true,
+            disableAuth: false,
           },
         }
       );

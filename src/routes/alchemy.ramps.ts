@@ -133,7 +133,7 @@ export class OnRampService {
     async queryForRates(payload: RatesPayload) {
         const timestamp = Date.now().toString();
         const sign = this.makeSign(timestamp);
-        const { data } = await alchemyClient.post("", payload, {
+        const { data } = await alchemyClient.post("/open/api/v4/merchant/rate/query", payload, {
             headers: { ...this.headers, timestamp, sign }
         });
         return data;
@@ -150,6 +150,7 @@ router.post(
     authenticateToken,
     async (req: Request, res: Response) => {
         try {
+            console.log(req.body)
             const { crypto, network, fiatCurrency, amount, side } = req.body;
             if (!crypto || !network || !fiatCurrency || !amount || !side) {
                 return res.status(400).json({
