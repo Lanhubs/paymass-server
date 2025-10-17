@@ -77,6 +77,13 @@ export class WalletService {
     publicKey: string /* currencyImage: string  */;
   }> {
     try {
+      logger.info("Attempting to generate wallet address via BlockRadar", {
+        userId,
+        addressName,
+        baseURL: process.env.BLOCKRADAR_BASE_URL,
+        hasApiKey: !!process.env.BLOCKRADAR_API_KEY
+      });
+
       const response = await blockradar.post("/addresses", {
         name: addressName || `wallet_${userId}_${Date.now()}`,
         metadata: {
@@ -89,13 +96,25 @@ export class WalletService {
         isEvmCompatible: true,
       });
 
+      logger.info("BlockRadar API response received", {
+        status: response.status,
+        hasData: !!response.data,
+        dataKeys: response.data ? Object.keys(response.data) : []
+      });
+
       if (response.status === 200) {
         const walletData = response.data.data;
         logger.info("BlockRadar Base wallet generated successfully", {
-          address: walletData.address.substring(0, 8) + "...",
+          address: walletData.address ? walletData.address.substring(0, 8) + "..." : "NO_ADDRESS",
           userId,
           hasPrivateKey: !!walletData.privateKey,
+          hasPublicKey: !!walletData.publicKey,
+          walletDataKeys: Object.keys(walletData)
         });
+
+        if (!walletData.address) {
+          throw new Error("No address returned from BlockRadar API");
+        }
 
         return {
           address: walletData.address,
@@ -114,6 +133,7 @@ export class WalletService {
       logger.error("Failed to generate wallet address from BlockRadar API", {
         error: error instanceof Error ? error.message : "Unknown error",
         userId,
+        errorDetails: error instanceof Error ? error.stack : undefined
       });
       throw new Error("BlockRadar API unavailable - wallet generation failed");
     }
@@ -121,10 +141,19 @@ export class WalletService {
 
   static async createUserWalletsWithBlockRadar(userId: string): Promise<void> {
     try {
+      logger.info("Starting wallet creation process", { userId });
+
       const blockRadarWallet = await this.generateWalletAddress(
         userId,
         `Base_wallet_${userId}`
       );
+
+      logger.info("Wallet address generated, proceeding with encryption", {
+        userId,
+        hasAddress: !!blockRadarWallet.address,
+        hasPrivateKey: !!blockRadarWallet.privateKey,
+        address: blockRadarWallet.address ? blockRadarWallet.address.substring(0, 8) + "..." : "NO_ADDRESS"
+      });
 
       const encryptedPrivateKey = blockRadarWallet.privateKey
         ? EncryptionService.encrypt(blockRadarWallet.privateKey)
@@ -134,49 +163,75 @@ export class WalletService {
         throw new Error("No private key received from BlockRadar API");
       }
 
+      logger.info("Private key encrypted, creating wallet records", { userId });
+
+      const walletData = [
+        {
+          assetId: process.env.ASSET_ID_SOL ?? "",
+          userId,
+          currency: "Base",
+          address: blockRadarWallet.address,
+          privateKey: encryptedPrivateKey,
+          publicKey: blockRadarWallet.publicKey,
+        },
+        {
+          assetId: process.env.ASSET_ID_USDT ?? "",
+          userId,
+          currency: "USDT",
+          address: blockRadarWallet.address,
+          privateKey: encryptedPrivateKey,
+          publicKey: blockRadarWallet.publicKey,
+        },
+        {
+          assetId: process.env.ASSET_ID_USDC ?? "",
+          userId,
+          currency: "USDC",
+          address: blockRadarWallet.address,
+          privateKey: encryptedPrivateKey,
+          publicKey: blockRadarWallet.publicKey,
+        }
+      ];
+
+      logger.info("Wallet data prepared, executing database transaction", {
+        userId,
+        walletCount: walletData.length,
+        currencies: walletData.map(w => w.currency)
+      });
+
       await prisma.$transaction([
-        prisma.wallet.create({
-          data: {
-            assetId: process.env.ASSET_ID_SOL ?? "",
-            userId,
-            currency: "Base",
-            address: blockRadarWallet.address,
-            privateKey: encryptedPrivateKey,
-            publicKey: blockRadarWallet.publicKey,
-            // currencyImage: blockRadarWallet.currencyImage
-          },
-        }),
-        prisma.wallet.create({
-          data: {
-            assetId: process.env.ASSET_ID_USDT ?? "",
-            userId,
-            currency: "USDT",
-            address: blockRadarWallet.address,
-            privateKey: encryptedPrivateKey,
-            publicKey: blockRadarWallet.publicKey,
-            // currencyImage: blockRadarWallet.currencyImage
-          },
-        }),
-        prisma.wallet.create({
-          data: {
-            assetId: process.env.ASSET_ID_USDC ?? "",
-            userId,
-            currency: "USDC",
-            address: blockRadarWallet.address,
-            privateKey: encryptedPrivateKey,
-            publicKey: blockRadarWallet.publicKey,
-          },
-        }),
+        prisma.wallet.create({ data: walletData[0] }),
+        prisma.wallet.create({ data: walletData[1] }),
+        prisma.wallet.create({ data: walletData[2] }),
       ]);
+
       logger.info("BlockRadar wallets created successfully", {
         userId,
         address: blockRadarWallet.address.substring(0, 8) + "...",
         currencies: ["Base", "USDT", "USDC"],
       });
+
+      // Verify wallets were created
+      const createdWallets = await prisma.wallet.findMany({
+        where: { userId },
+        select: { id: true, currency: true, address: true }
+      });
+
+      logger.info("Wallet creation verification", {
+        userId,
+        expectedCount: 3,
+        actualCount: createdWallets.length,
+        wallets: createdWallets.map(w => ({
+          currency: w.currency,
+          hasAddress: !!w.address,
+          address: w.address ? w.address.substring(0, 8) + "..." : "NO_ADDRESS"
+        }))
+      });
+
     } catch (error) {
       logger.error("Failed to create user wallets with BlockRadar", {
         userId,
-        error,
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
       });
       throw new Error("Wallet creation failed - BlockRadar API unavailable");
     }

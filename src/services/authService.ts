@@ -53,7 +53,7 @@ export class AuthService {
       {
         expiresIn: '15m',
         // algorithm: "RS256"
-      
+
       } // Short-lived access token
     );
 
@@ -62,7 +62,7 @@ export class AuthService {
       secretKey,
       {
         expiresIn: '7d',
-        
+
       } // Long-lived refresh token
     );
 
@@ -71,7 +71,8 @@ export class AuthService {
 
   static async register(userData: RegisterRequest, deviceInfo?: { ip: string; userAgent: string }) {
     try {
-      const existingUser = await prisma.user.findFirst({
+      
+      const existingUser = await prisma.user.findUnique({
         where: { email: userData.email }
       });
 
@@ -104,13 +105,14 @@ export class AuthService {
 
       // Generate wallets for the new user
       try {
-        logger.info('User wallets created successfully', { userId: user.id });
+        logger.info('Attempting to create user wallets', { userId: user.id });
         await WalletService.createUserWalletsWithBlockRadar(user.id);
+        logger.info('User wallets created successfully', { userId: user.id });
 
       } catch (walletError) {
         logger.error('Failed to create user wallets during registration', {
           userId: user.id,
-          error: walletError
+          error: walletError instanceof Error ? walletError.message : walletError
         });
         // Don't fail registration if wallet creation fails, but log it
       }
@@ -361,12 +363,13 @@ export class AuthService {
 
         // Generate wallets for the new user
         try {
+          logger.info('Attempting to create user wallets for Google user', { userId: user.id });
           await WalletService.createUserWalletsWithBlockRadar(user.id);
           logger.info('User wallets created successfully for Google user', { userId: user.id });
         } catch (walletError) {
           logger.error('Failed to create user wallets during Google registration', {
             userId: user.id,
-            error: walletError
+            error: walletError instanceof Error ? walletError.message : walletError
           });
         }
       }
@@ -441,7 +444,83 @@ export class AuthService {
         throw new Error('User not found');
       }
 
-      return user;
+      // Fetch wallets with all necessary fields
+      let wallets = await prisma.wallet.findMany({
+        where: {
+          userId
+        },
+        select: {
+          id: true,
+          address: true,
+          balance: true,
+          currency: true,
+          publicKey: true,
+          assetId: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      // If user has no wallets, create them automatically
+      if (wallets.length === 0) {
+        logger.info("User has no wallets, creating them automatically", { userId });
+        try {
+          await WalletService.createUserWalletsWithBlockRadar(userId);
+          // Fetch the newly created wallets
+          wallets = await prisma.wallet.findMany({
+            where: {
+              userId
+            },
+            select: {
+              id: true,
+              address: true,
+              balance: true,
+              currency: true,
+              publicKey: true,
+              assetId: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          });
+          logger.info("Wallets created automatically for user", { userId, walletCount: wallets.length });
+        } catch (walletError) {
+          logger.error("Failed to create wallets automatically", { userId, error: walletError });
+          // Continue without failing the profile fetch
+        }
+      }
+
+      logger.info("User profile with wallet addresses", {
+        userId,
+        walletCount: wallets.length,
+        wallets: wallets.map(w => ({
+          currency: w.currency,
+          address: w.address ? `${w.address.substring(0, 8)}...` : 'NO_ADDRESS',
+          hasAddress: !!w.address
+        }))
+      });
+
+      // Check if any wallets are missing addresses
+      const walletsWithoutAddresses = wallets.filter(w => !w.address || w.address.trim() === '');
+      if (walletsWithoutAddresses.length > 0) {
+        logger.warn("Found wallets without addresses", {
+          userId,
+          walletsWithoutAddresses: walletsWithoutAddresses.map(w => ({
+            id: w.id,
+            currency: w.currency,
+            hasAddress: !!w.address
+          }))
+        });
+      }
+
+      return { 
+        ...user, 
+        wallets,
+        walletStatus: {
+          totalWallets: wallets.length,
+          walletsWithAddresses: wallets.filter(w => w.address && w.address.trim() !== '').length,
+          walletsWithoutAddresses: walletsWithoutAddresses.length
+        }
+      };
     } catch (error) {
       logger.error('Failed to get user profile', { userId, error });
       throw error;
@@ -611,4 +690,6 @@ export class AuthService {
       throw error;
     }
   }
+
+
 }
