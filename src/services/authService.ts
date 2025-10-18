@@ -71,7 +71,7 @@ export class AuthService {
 
   static async register(userData: RegisterRequest, deviceInfo?: { ip: string; userAgent: string }) {
     try {
-      
+
       const existingUser = await prisma.user.findUnique({
         where: { email: userData.email }
       });
@@ -146,12 +146,15 @@ export class AuthService {
     }
   }
 
-  static async login(credentials: LoginRequest, deviceInfo?: { ip: string; userAgent: string }) {
+  static async login(credentials: LoginRequest,
+    deviceInfo?: { ip: string; userAgent: string }) {
     try {
+      console.log(credentials)
+
       const user = await prisma.user.findUnique({
         where: { email: credentials.email }
       });
-
+      console.log(user)
       if (!user || !user.password) {
         throw new Error('Invalid credentials');
       }
@@ -512,8 +515,8 @@ export class AuthService {
         });
       }
 
-      return { 
-        ...user, 
+      return {
+        ...user,
         wallets,
         walletStatus: {
           totalWallets: wallets.length,

@@ -204,19 +204,20 @@ router.post(
   authenticateToken,
   async (req: Request, res: Response) => {
     try {
-      const { accountNumber, bankCode, bank } = req.body;
+      const { accountNumber, bankName, accountName, bankCode } = req.body;
 
-      if (!accountNumber || !bankCode) {
+      if (!accountNumber || !bankName || !accountName) {
         return res.status(400).json({
           success: false,
-          message: "Account number and bank code are required",
+          message: "Account number, bank name, and account name are required",
         });
       }
 
       const verification = await offrampServices.verifyAccountNumber({
         accountNumber,
+        bankName,
+        accountName,
         bankCode,
-        bank: bank || "",
       });
 
       res.json(verification);
