@@ -6,3 +6,4 @@ prisma/ssl.pem
 ssl.pem
 logs
 dist
+serviceAccountKey.json
