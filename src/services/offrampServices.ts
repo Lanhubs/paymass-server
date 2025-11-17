@@ -319,7 +319,7 @@ class offrampServices {
         `Paycrest verification successful: ${JSON.stringify(paycrestAccount)}`
       );
 
-      // Step 2: Always fetch Paystack banks to find the correct Paystack bank code
+      // Always fetch Paystack banks to find the correct Paystack bank code
       // Note: The bankCode from payload is from Paycrest, which is different from Paystack's bank codes
       logger.info(`Fetching Paystack banks to find correct bank code for: ${bankName}`);
 
@@ -362,7 +362,7 @@ class offrampServices {
       const paystackBankCode = matchingBank.code;
       logger.info(`Found matching Paystack bank code: ${paystackBankCode} for bank: ${matchingBank.name}`);
 
-      // Step 3: Verify with Paystack API for account name validation
+      // Verify with Paystack API for account name validation
       logger.info(
         `Verifying account with Paystack: account_number=${accountNumber}, bank_code=${paystackBankCode}`
       );
@@ -450,7 +450,7 @@ class offrampServices {
           },
         };
       }
-      
+
 
     } catch (error: any) {
       logger.error(`Account verification error: ${error.message}`);

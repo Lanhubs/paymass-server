@@ -15,10 +15,17 @@ const router = Router();
 router.get('/',
   generalRateLimit,
   authenticateToken,
+  [
+    query('network')
+      .optional()
+      .isIn(['Base', 'Ethereum', 'BNB', 'Solana', 'Lisk', 'Celo'])
+      .withMessage('Network must be one of: Base, Ethereum, BNB, Solana, Lisk, Celo')
+  ],
+  handleValidationErrors,
   (async (req: AuthenticatedRequest, res: Response) => {
     try {
-
-      const wallets = await WalletService.getUserWallets(req.user!.userId);
+      const network = req.query.network as string;
+      const wallets = await WalletService.getUserWallets(req.user!.userId, network);
 
       res.json({
         success: true,
@@ -28,12 +35,212 @@ router.get('/',
     } catch (error: any) {
       logger.error('Get wallets error', {
         userId: req.user?.userId,
+        network: req.query.network,
         error: error.message
       });
 
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve wallets'
+      });
+    }
+  }) as RequestHandler
+);
+
+// New route: Get wallets grouped by network
+router.get('/by-network',
+  generalRateLimit,
+  authenticateToken,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const walletsByNetwork = await WalletService.getUserWalletsByNetwork(req.user!.userId);
+
+      res.json({
+        success: true,
+        message: 'Wallets by network retrieved successfully',
+        data: walletsByNetwork
+      });
+    } catch (error: any) {
+      logger.error('Get wallets by network error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve wallets by network'
+      });
+    }
+  }) as RequestHandler
+);
+
+// New route: Get network statistics
+router.get('/networks/stats',
+  generalRateLimit,
+  authenticateToken,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const networkStats = WalletService.getNetworkStats();
+
+      res.json({
+        success: true,
+        message: 'Network statistics retrieved successfully',
+        data: networkStats
+      });
+    } catch (error: any) {
+      logger.error('Get network stats error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve network statistics'
+      });
+    }
+  }) as RequestHandler
+);
+
+// New route: Get portfolio worth
+router.get('/portfolio',
+  generalRateLimit,
+  authenticateToken,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const portfolioWorth = await WalletService.calculatePortfolioWorth(req.user!.userId);
+
+      res.json({
+        success: true,
+        message: 'Portfolio worth retrieved successfully',
+        data: portfolioWorth
+      });
+    } catch (error: any) {
+      logger.error('Get portfolio worth error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve portfolio worth'
+      });
+    }
+  }) as RequestHandler
+);
+
+// Debug route: Force create wallets
+router.post('/debug/create-wallets',
+  generalRateLimit,
+  authenticateToken,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      logger.info('Debug: Force creating wallets for user', { userId: req.user!.userId });
+      
+      await WalletService.createUserWalletsWithBlockRadar(req.user!.userId);
+      
+      const wallets = await WalletService.getUserWallets(req.user!.userId);
+
+      res.json({
+        success: true,
+        message: 'Wallets created successfully',
+        data: {
+          walletsCreated: wallets.length,
+          wallets: wallets
+        }
+      });
+    } catch (error: any) {
+      logger.error('Debug wallet creation error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to create wallets'
+      });
+    }
+  }) as RequestHandler
+);
+
+// Debug route: Check network configurations
+router.get('/debug/network-configs',
+  generalRateLimit,
+  authenticateToken,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const networkConfigs = WalletService.getAllNetworkConfigs();
+      const networkStats = WalletService.getNetworkStats();
+
+      res.json({
+        success: true,
+        message: 'Network configurations retrieved',
+        data: {
+          configs: networkConfigs,
+          stats: networkStats
+        }
+      });
+    } catch (error: any) {
+      logger.error('Debug network configs error', {
+        userId: req.user?.userId,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve network configurations'
+      });
+    }
+  }) as RequestHandler
+);
+
+// New route: Generate wallet for specific network
+router.post('/generate/:network',
+  generalRateLimit,
+  authenticateToken,
+  [
+    body('network')
+      .isIn(['Base', 'Ethereum', 'BNB', 'Solana', 'Lisk', 'Celo'])
+      .withMessage('Network must be one of: Base, Ethereum, BNB, Solana, Lisk, Celo')
+  ],
+  handleValidationErrors,
+  (async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const network = req.params.network;
+      const result = await WalletService.generateSingleNetworkWallet(req.user!.userId, network);
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.error || 'Failed to generate wallet'
+        });
+      }
+
+      // Create wallets in database
+      await prisma.$transaction(
+        result.wallets.map(walletData => 
+          prisma.wallet.create({ data: walletData })
+        )
+      );
+
+      res.json({
+        success: true,
+        message: `${network} wallet generated successfully`,
+        data: {
+          network,
+          walletsCreated: result.wallets.length,
+          currencies: result.wallets.map(w => w.currency)
+        }
+      });
+    } catch (error: any) {
+      logger.error('Generate network wallet error', {
+        userId: req.user?.userId,
+        network: req.params.network,
+        error: error.message
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate network wallet'
       });
     }
   }) as RequestHandler
@@ -93,32 +300,53 @@ router.post('/withdraw',
   authenticateToken,
   sanitizeInput,
   [
-    
     body('toAddress')
-      .isLength({ min: 32, max: 42 })
-      .withMessage('Invalid Base address length')
-      .matches(/^0x[0-9a-fA-F]{40}$/)
-      .withMessage('Invalid Base address format (must be base58)'),
+      .isLength({ min: 32, max: 44 })
+      .withMessage('Invalid address length')
+      .custom((value, { req }) => {
+        const network = req.body.network || 'Base';
+        if (network === 'Solana') {
+          // Solana address validation (base58, ~44 characters)
+          if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)) {
+            throw new Error('Invalid Solana address format');
+          }
+        } else {
+          // EVM address validation (0x + 40 hex characters)
+          if (!/^0x[0-9a-fA-F]{40}$/.test(value)) {
+            throw new Error('Invalid EVM address format');
+          }
+        }
+        return true;
+      }),
     body('amount')
       .isFloat({ min: 0.000001 })
       .withMessage('Amount must be a positive number'),
     body('currency')
-      .isIn(['Base', 'USDT', 'USDC'])
-      .withMessage('Currency must be Base, USDT, or USDC')
+      .isIn(['Base', 'ETH', 'BNB', 'SOL', 'LSK', 'CELO', 'USDT', 'USDC'])
+      .withMessage('Currency must be one of: Base, ETH, BNB, SOL, LSK, CELO, USDT, USDC'),
+    body('network')
+      .optional()
+      .isIn(['Base', 'Ethereum', 'BNB', 'Solana', 'Lisk', 'Celo'])
+      .withMessage('Network must be one of: Base, Ethereum, BNB, Solana, Lisk, Celo')
   ],
   handleValidationErrors,
   (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { walletId, toAddress, amount, currency } = req.body;
+      const { walletId, toAddress, amount, currency, network } = req.body;
       
+      const whereClause: any = {
+        id: walletId,
+        userId: req.user!.userId,
+        currency: currency,
+        isActive: true
+      };
+
+      if (network) {
+        whereClause.network = network;
+      }
 
       const wallet = await prisma.wallet.findFirst({
-        where: {
-          id: walletId,
-          userId: req.user!.userId,
-          currency: currency,
-          isActive: true
-        }
+        where: whereClause
       });
 
       if (!wallet) {
@@ -133,7 +361,8 @@ router.post('/withdraw',
         wallet.assetId,
         toAddress,
         parseFloat(amount),
-        currency
+        currency,
+        network
       );
 
       res.status(200).json({
@@ -144,6 +373,8 @@ router.post('/withdraw',
     } catch (error: any) {
       logger.error('Withdraw error', {
         userId: req.user?.userId,
+        network: req.body.network,
+        currency: req.body.currency,
         error: error.message
       });
 

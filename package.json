@@ -9,7 +9,7 @@
     "serve": "bun --hot index.ts",
     "clean": "rmdir /s /q dist 2>nul || true",
     "build": "tsc",
-    "reset": "bun prisma db push --force-reset",
+    "reset": "prisma db push --force-reset",
     "start": "node ./dist/index.js",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",

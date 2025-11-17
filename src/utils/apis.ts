@@ -1,9 +1,9 @@
 import axios, { AxiosRequestConfig } from 'axios';
-
+const apiKeyBlockRadar = process.env.BLOCKRADAR_API_KEY as string
 const blockradar = axios.create({
-  baseURL: process.env.BLOCKRADAR_BASE_URL,
+  baseURL: process.env.BLOCKRADAR_BASE_URL, 
   headers: {
-    'x-api-key': process.env.BLOCKRADAR_API_KEY ?? "",
+    'x-api-key': apiKeyBlockRadar ,
     'Content-Type': 'application/json'
   },
   timeout: 30000

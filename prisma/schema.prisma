@@ -4,8 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  //  url      = env("DATABASE_URL")
-  url      = "postgresql://paymass_tkat_user:iMc9qwRHVWsKyGiswfym4IQJRC3biPC3@dpg-d3mlfqpgv73c73fro49g-a.oregon-postgres.render.com/paymass_tkat"
+   url      = env("DATABASE_URL")
 }
 
 // PostgreSQL Enums
@@ -80,11 +79,20 @@ model User {
 
   @@map("users")
 }
+model Admin {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  username        String    @unique
+  password        String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  }
 
 model Wallet {
   id         String   @id @default(uuid())
   userId     String
-  currency   String // USDT, USDC
+  currency   String // USDT, USDC, ETH, BNB, SOL, LSK, CELO
+  network    String   @default("Base") // Base, Ethereum, BNB, Solana, Lisk, Celo
   address    String
   privateKey String // Encrypted
   publicKey  String
@@ -99,7 +107,7 @@ model Wallet {
   sentTransactions     Transaction[] @relation("SenderWallet")
   receivedTransactions Transaction[] @relation("ReceiverWallet")
 
-  @@unique([userId, currency])
+  @@unique([userId, currency, network])
   @@map("wallets")
 }
 

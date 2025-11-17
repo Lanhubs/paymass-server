@@ -45,7 +45,7 @@ var private_key = Bun.file(pvKey)
 
 
 export class AuthService {
-  private static async generateTokens(userId: string, email: string) {
+   static async generateTokens(userId: string, email: string) {
     const secretKey = process.env.APP_AUTH_KEY as string
     const accessToken = jwt.sign(
       { userId, email },
@@ -457,13 +457,14 @@ export class AuthService {
           address: true,
           balance: true,
           currency: true,
+          network: true,
           publicKey: true,
           assetId: true,
           createdAt: true,
           updatedAt: true
         }
       });
-
+      console.log(wallets);
       // If user has no wallets, create them automatically
       if (wallets.length === 0) {
         logger.info("User has no wallets, creating them automatically", { userId });
@@ -479,6 +480,7 @@ export class AuthService {
               address: true,
               balance: true,
               currency: true,
+              network: true,
               publicKey: true,
               assetId: true,
               createdAt: true,
@@ -515,6 +517,9 @@ export class AuthService {
         });
       }
 
+      // Calculate portfolio worth
+      const portfolioWorth = await WalletService.calculatePortfolioWorth(userId);
+
       return {
         ...user,
         wallets,
@@ -522,6 +527,12 @@ export class AuthService {
           totalWallets: wallets.length,
           walletsWithAddresses: wallets.filter(w => w.address && w.address.trim() !== '').length,
           walletsWithoutAddresses: walletsWithoutAddresses.length
+        },
+        portfolio: {
+          totalWorthUSD: portfolioWorth.totalWorthUSD,
+          totalWorthFormatted: portfolioWorth.totalWorthFormatted,
+          breakdown: portfolioWorth.breakdown,
+          lastUpdated: portfolioWorth.lastUpdated
         }
       };
     } catch (error) {
